@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vivado VM Scheduler | ChipChop</title>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <style>
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            max-width: 950px; 
+            margin: 0 auto; 
+            padding: 40px 20px; 
+            background-color: #0a0a0c; 
+            color: #ffffff; 
+            background-image: linear-gradient(rgba(100, 100, 100, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 100, 100, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        /* Navbar & Logo */
+        .navbar { display: flex; align-items: center; margin-bottom: 30px; }
+        .logo { height: 50px; width: auto; }
+
+        .card { 
+            background-color: #161619; 
+            padding: 30px; 
+            border-radius: 20px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08); 
+            margin-bottom: 25px; 
+            border: 1px solid #1e1e23; 
+        }
+        
+        h2 { margin-top: 0; color: #ffffff; font-size: 28px; font-weight: 700; margin-bottom: 25px; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; color: #a1a1a7; font-size: 14px; }
+        strong { font-weight: 700; color: #ffffff; } 
+
+        input, select { 
+            width: 100%; padding: 12px 15px; margin-bottom: 20px; border-radius: 8px; 
+            border: 1px solid #303036; background-color: #1e1e23; color: #ffffff; 
+            box-sizing: border-box; font-size: 16px; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        input[type="datetime-local"] { color-scheme: dark; }
+        input:focus, select:focus { outline: none; border-color: #00ff8a; box-shadow: 0 0 0 1px #00ff8a; }
+        ::placeholder { color: #a1a1a7; opacity: 1; }
+
+        button { 
+            display: inline-block; width: 100%; padding: 12px 20px; border-radius: 8px; 
+            border: none; cursor: pointer; font-weight: 700; font-size: 16px;
+            transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; text-align: center;
+        }
+
+        button[type="submit"] { background-color: #1e1e23; color: #ffffff; box-shadow: 0 0 0 1px #303036; }
+        button[type="submit"]:hover { background-color: #ffffff; color: #000000; box-shadow: 0 0 0 1px #ffffff; }
+
+        .btn-delete { 
+            background-color: #2e1014; color: #ffffff; width: auto; padding: 6px 14px; 
+            font-size: 14px; margin-left: 10px; box-shadow: 0 0 0 1px #303036; 
+        }
+        .btn-delete:hover { background-color: #dc3545; color: #ffffff; box-shadow: 0 0 0 1px #dc3545; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; color: #ffffff; }
+        th, td { text-align: left; padding: 15px; border-bottom: 1px solid #1e1e23; }
+        th { color: #a1a1a7; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Calendar Theme */
+        #calendar { margin-top: 20px; }
+        .fc { background-color: #161619; border-radius: 8px; overflow: hidden; border: 1px solid #1e1e23; }
+        .fc-header-toolbar .fc-toolbar-title { color: #ffffff; font-size: 20px; font-weight: 600;}
+        .fc-button { color: #ffffff; background-color: #1e1e23 !important; border-color: #303036 !important; }
+        .fc-button-active { background-color: #ffffff !important; color: #000000 !important; border-color: #ffffff !important;}
+        .fc-col-header-cell-cushion { color: #ffffff; } 
+        .fc-timegrid-slot-label-cushion { color: #ffffff; } 
+        .fc-theme-standard td, .fc-theme-standard th { border-color: #1e1e23; } 
+        .fc-theme-standard .fc-scrollgrid { border-color: #1e1e23; } 
+        .fc-event-title, .fc-event-time { font-weight: 600; color: #ffffff !important; } 
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <img src="logo.png" alt="ChipChop Logo" class="logo">
+    </div>
+
+    <div class="card">
+        <h2>Book the Vivado VM</h2>
+        <form id="bookingForm" autocomplete="off">
+            <label>Virtual Machine:</label>
+            <select id="instanceId" required>
+                <option value="i-09fd5dc639955da65">Vivado VM</option>
+            </select>
+            
+            <input type="email" id="userEmail" placeholder="Your Berkeley Email" required autocomplete="off">
+            
+            <label>Start Time:</label>
+            <input type="datetime-local" id="startTime" required autocomplete="off">
+            
+            <label>Stop Time:</label>
+            <input type="datetime-local" id="stopTime" required autocomplete="off">
+            
+            <button type="submit">Reserve Now</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Availability Calendar</h2>
+        <div id="calendar"></div>
+    </div>
+
+    <div class="card">
+        <h2>Active Schedule List</h2>
+        <table id="scheduleTable">
+            <thead>
+                <tr>
+                    <th>Machine</th>
+                    <th>User</th>
+                    <th>Start</th>
+                    <th>Stop</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        //live API Gateway URL
+        const API_URL = "https://c5xdvr24q0.execute-api.us-east-1.amazonaws.com/schedule"; 
+        
+        const friendlyNames = {
+            "i-09fd5dc639955da65": "Vivado VM"
+        };
+
+        // Makes the dates easy to read for humans (e.g. Mar 1, 4:56 PM)
+        function formatReadableDate(isoString) {
+            const date = new Date(isoString); 
+            return date.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        let calendar;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek', 
+                height: 500,
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'timeGridWeek,timeGridDay'
+                },
+                events: [] 
+            });
+            calendar.render();
+            loadSchedules(); 
+        });
+
+        async function loadSchedules() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                
+                // --- FILTER BY DATABASE STATE ---
+                // Only show items where the backend hasn't flipped Enabled to false yet
+                const activeData = data.filter(item => item.Enabled === true);
+                
+                const body = document.getElementById('tableBody');
+                body.innerHTML = activeData.map(item => {
+                    const machine = friendlyNames[item.InstanceID] || item.InstanceID;
+                    
+            
+                    const startStr = formatReadableDate(item.StartTime);
+                    const stopStr = formatReadableDate(item.StopTime);
+                    
+                    return `
+                        <tr>
+                            <td><strong>${machine}</strong></td>
+                            <td>${item.UserEmail}</td>
+                            <td>${startStr}</td>
+                            <td>${stopStr}</td>
+                            <td><button class="btn-delete" onclick="deleteRes('${item.InstanceID}', '${item.StartTime}')">Cancel</button></td>
+                        </tr>
+                    `;
+                }).join('');
+
+                calendar.removeAllEvents(); 
+                activeData.forEach(item => {
+                    calendar.addEvent({
+                        title: item.UserEmail.split('@')[0], 
+                        start: item.StartTime,
+                        end: item.StopTime,
+                        color: '#02b99d' 
+                    });
+                });
+            } catch (error) {
+                console.error("Error loading schedules:", error);
+                document.getElementById('tableBody').innerHTML = "<tr><td colspan='5' style='color:red;'>Error loading schedules. Please check your network.</td></tr>";
+            }
+        }
+
+        document.getElementById('bookingForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            // STRICT VALIDATION: Pulling the values directly to check them
+            const instanceId = document.getElementById('instanceId').value.trim();
+            const userEmail = document.getElementById('userEmail').value.trim();
+            const startTime = document.getElementById('startTime').value;
+            const stopTime = document.getElementById('stopTime').value;
+
+            // If any of these are physically empty, block the submission entirely
+            if (!instanceId || !userEmail || !startTime || !stopTime) {
+                alert("Action Required: Please fill out all fields, including your email, to secure this reservation.");
+                return;
+            }
+
+            const payload = {
+                InstanceID: instanceId,
+                UserEmail: userEmail,
+                StartTime: startTime,
+                StopTime: stopTime
+            };
+            
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) { 
+                    loadSchedules(); 
+                    e.target.reset(); // Clears the DOM form
+                    
+                    // Extreme override: Force clear the inputs just in case the browser tries to hang onto them
+                    document.getElementById('userEmail').value = '';
+                    document.getElementById('startTime').value = '';
+                    document.getElementById('stopTime').value = '';
+                }
+                else { 
+                    alert("Error: " + (result.error || "Time Slot Unavailable: The Vivado VM is already booked during this window.")); 
+                    loadSchedules(); 
+                }
+            } catch (error) {
+                console.error("Error submitting reservation:", error);
+                alert("Network error. Your reservation might not have been saved.");
+                loadSchedules();
+            }
+        };
+
+        async function deleteRes(id, start) {
+            if(confirm("Cancel this reservation?")) {
+                try {
+                    await fetch(API_URL, {
+                        method: 'DELETE',
+                        body: JSON.stringify({ InstanceID: id, StartTime: start })
+                    });
+                    loadSchedules(); 
+                } catch (error) {
+                    console.error("Error deleting reservation:", error);
+                    alert("Network error. The reservation might still be active.");
+                    loadSchedules();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
