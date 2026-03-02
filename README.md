@@ -1,2 +1,2 @@
 # instanceScheduler
-schedule aws instance
+Schedule AWS instances
