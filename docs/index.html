@@ -88,6 +88,7 @@
             <label>Virtual Machine:</label>
             <select id="instanceId" required>
                 <option value="i-0acfb98d0f2d44690">Vivado VM</option>
+                <option value="i-045e95f24551ed6f1">New Vivado VM Clone</option>
             </select>
             
             <input type="email" id="userEmail" placeholder="Your Chipchop Email" required autocomplete="off">
@@ -128,7 +129,8 @@
         const API_URL = "https://c5xdvr24q0.execute-api.us-east-1.amazonaws.com/schedule"; 
         
         const friendlyNames = {
-            "i-0acfb98d0f2d44690": "Vivado VM"
+            "i-0acfb98d0f2d44690": "Vivado VM 1"
+            "i-045e95f24551ed6f1": "Vivado VM 2"
         };
 
         // Makes the dates easy to read for humans (e.g. Mar 1, 4:56 PM)
