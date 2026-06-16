@@ -73,13 +73,50 @@
         .fc-timegrid-slot-label-cushion { color: #ffffff; } 
         .fc-theme-standard td, .fc-theme-standard th { border-color: #1e1e23; } 
         .fc-theme-standard .fc-scrollgrid { border-color: #1e1e23; } 
-        .fc-event-title, .fc-event-time { font-weight: 600; color: #ffffff !important; } 
+        .fc-event-title, .fc-event-time { font-weight: 600; color: #ffffff !important; }
+
+        /* Instance Status */
+        .status-grid { display: flex; gap: 20px; flex-wrap: wrap; }
+        .status-item {
+            flex: 1; min-width: 180px; background-color: #1e1e23; border-radius: 12px;
+            padding: 18px 20px; border: 1px solid #303036; display: flex;
+            align-items: center; gap: 14px;
+        }
+        .status-dot {
+            width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+            box-shadow: 0 0 8px currentColor;
+        }
+        .status-dot.on  { background-color: #00ff8a; color: #00ff8a; }
+        .status-dot.off { background-color: #555; color: #555; box-shadow: none; }
+        .status-label { font-size: 15px; font-weight: 600; }
+        .status-badge {
+            margin-left: auto; font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+            padding: 3px 9px; border-radius: 5px;
+        }
+        .status-badge.on  { background-color: rgba(0,255,138,0.12); color: #00ff8a; }
+        .status-badge.off { background-color: #2a2a30; color: #777; }
     </style>
 </head>
 <body>
 
     <div class="navbar">
         <img src="logo.png" alt="ChipChop Logo" class="logo">
+    </div>
+
+    <div class="card">
+        <h2>Instance Status</h2>
+        <div class="status-grid" id="statusGrid">
+            <div class="status-item">
+                <div class="status-dot off" id="dot-i-0acfb98d0f2d44690"></div>
+                <span class="status-label">Vivado VM 1</span>
+                <span class="status-badge off" id="badge-i-0acfb98d0f2d44690">—</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot off" id="dot-i-045e95f24551ed6f1"></div>
+                <span class="status-label">Vivado VM 2</span>
+                <span class="status-badge off" id="badge-i-045e95f24551ed6f1">—</span>
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -125,8 +162,8 @@
     </div>
 
     <script>
-        //live API Gateway URL
-        const API_URL = "https://c5xdvr24q0.execute-api.us-east-1.amazonaws.com/schedule"; 
+        const API_URL = "https://c5xdvr24q0.execute-api.us-east-1.amazonaws.com/schedule";
+        const STATUS_URL = "https://c5xdvr24q0.execute-api.us-east-1.amazonaws.com/status";
         
         const friendlyNames = {
             "i-0acfb98d0f2d44690": "Vivado VM 1", 
@@ -147,6 +184,25 @@
 
         let calendar;
 
+        async function loadInstanceStatus() {
+            try {
+                const res = await fetch(STATUS_URL);
+                const data = await res.json();
+                data.forEach(instance => {
+                    const isOn = instance.State === 'running';
+                    const dot = document.getElementById('dot-' + instance.InstanceID);
+                    const badge = document.getElementById('badge-' + instance.InstanceID);
+                    if (dot && badge) {
+                        dot.className = 'status-dot ' + (isOn ? 'on' : 'off');
+                        badge.className = 'status-badge ' + (isOn ? 'on' : 'off');
+                        badge.textContent = isOn ? 'ON' : 'OFF';
+                    }
+                });
+            } catch (error) {
+                console.error("Error loading instance status:", error);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const calendarEl = document.getElementById('calendar');
             calendar = new FullCalendar.Calendar(calendarEl, {
@@ -160,7 +216,9 @@
                 events: [] 
             });
             calendar.render();
-            loadSchedules(); 
+            loadSchedules();
+            loadInstanceStatus();
+            setInterval(loadInstanceStatus, 30000); // refresh every 30s
         });
 
         async function loadSchedules() {
