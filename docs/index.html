@@ -238,8 +238,7 @@
             });
             calendar.render();
             loadSchedules();
-            loadInstanceStatus();
-            setInterval(loadInstanceStatus, 30000); // refresh every 30s
+            setInterval(loadSchedules, 30000);
         });
 
         async function loadSchedules() {
@@ -249,6 +248,7 @@
                 
                 const activeData = data.filter(item => item.Enabled === true);
                 activeSchedules = activeData;
+                loadInstanceStatus();
                 
                 const body = document.getElementById('tableBody');
                 body.innerHTML = activeData.map(item => {
